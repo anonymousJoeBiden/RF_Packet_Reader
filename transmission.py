@@ -1,8 +1,4 @@
 #BLE uses 2.4 GHz frq
-#most likely that signals send direct binary through peaks in the amplitude of these BLE signals
-#need 2 transmitters and 2 recievers to each RPi can send signal to phone/car
-#edit: signals are sent through packets, blobs are the raw binary of the signal, and other information about the signal is viewable
-
 
 import asyncio
 import json
@@ -11,12 +7,14 @@ import struct
 import time
 from bleak import BleakScanner
 
-REMOTE_HOST = "192.0.2.10"   # replace
-REMOTE_PORT = 9000           # replace
 
 # [4-byte big-endian header_len][header_json][raw_payload_bytes]
 # header_json contains metadata and list of blob lengths
 
+#REMOTE_HOST=
+#REMOTE_PORT=
+
+#meant to send the information to a target later
 async def sender(queue):
     reader, writer = await asyncio.open_connection(REMOTE_HOST, REMOTE_PORT)
     sock = writer.get_extra_info("socket")
@@ -37,8 +35,9 @@ async def sender(queue):
         writer.close()
         await writer.wait_closed()
 
+#main function
 async def main():
-    queue = asyncio.Queue(maxsize=1000)
+    queue = asyncio.Queue(maxsize=0)
 
     def detection_callback(device, advertisement_data):
         ts = time.time()
@@ -67,8 +66,8 @@ async def main():
             queue.put_nowait((header_bytes, bytes(raw)))
         except asyncio.QueueFull:
             pass
-        if(header.get("rssi") > -100 and header.get("rssi") != 127):#filter distance
-            if(76 not in device.metadata.get("manufacturer_data") and device.metadata.get("manufacturer_data") != {} and 6 not in device.metadata.get("manufacturer_data") and device.metadata.get("manufacturer_data") != {}):#filter apple SIG
+        if(header.get("rssi") > -100 and header.get("rssi") != 127):#filter distance and 127 means missing or unknown signal so I'm filtering that out as well.
+            if(76 not in device.metadata.get("manufacturer_data") and device.metadata.get("manufacturer_data") != {} and 6 not in device.metadata.get("manufacturer_data") and device.metadata.get("manufacturer_data") != {}):#filter apple and microsoft SIG
                 #print("Queue full, dropping packet", header.get("address"), raw, header.get("rssi"), device.metadata)
                 print(f"here is the metadata where you can find the SIG identifier for the company who is sending the signal {list(device.metadata['manufacturer_data'].keys())[0]}")
 
@@ -82,16 +81,6 @@ async def main():
         pass
     finally:
         await scanner.stop()
-        sender_task.cancel()
-        await sender_task
-
-
-# def sender_files(package):
-#     pass
-
-# def packager(uuid, timestamp, address, rssi, name, blob, raw):#maybe just copy all package info from bleak?????? I'll see later
-#     pass
-
 
 if __name__ == "__main__":
     asyncio.run(main())
