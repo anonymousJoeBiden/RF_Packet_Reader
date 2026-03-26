@@ -1,4 +1,4 @@
-#BLE uses 2.4 GHz frq
+#BLE (bluetooth low energy) uses 2.4 GHz frq
 
 import asyncio
 import json
